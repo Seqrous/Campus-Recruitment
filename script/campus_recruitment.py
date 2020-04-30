@@ -4,17 +4,17 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 # classification / preprocessing imports
-from sklearn.model_selection import KFold, cross_val_score
+from sklearn.model_selection import KFold, cross_val_score, train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, LabelEncoder
 from sklearn.impute import SimpleImputer
-from sklearn.ensemble import RandomForestClassifier
-from xgboost import XGBClassifier
-from sklearn.linear_model import LogisticRegression
-from sklearn.tree import DecisionTreeClassifier
+from sklearn.linear_model import LinearRegression
+from sklearn.metrics import mean_squared_error
+import statsmodels.api as sm
+from scipy.stats import ttest_ind
 import eli5
-
+import seaborn as sns; sns.set(style='ticks', color_codes=True)
 
 # sl_no - Serial Number
 # ssc_p - Secondary Education Percentage - 10th Grade
@@ -184,5 +184,84 @@ final_data = pd.concat([num_data, cat_data_encoded], axis = 1)
 
 X = final_data.drop(['salary', 'sl_no'], axis=1)
 
+""" TASKS FROM KAGGLE """
 
+""" Association between 'mba_p' (outcome) and 'degree_p' (input) """
+X_1 = dataset['degree_p']
+y_1 = dataset['mba_p']
+X1 = np.array(X_1).reshape(-1, 1)
+y1 = np.array(y_1).reshape(-1, 1)
 
+X1_train, X1_test, y1_train, y1_test = train_test_split(X1, y1, train_size=0.25)
+
+lin_reg = LinearRegression(n_jobs=-1)
+lin_reg.fit(X1_train, y1_train)
+y_pred = lin_reg.predict(X1_test)
+
+mse = mean_squared_error(y1_test, y_pred)
+rmse = np.sqrt(mse)
+print(f"MSE: {mse}")
+print(f"RMSE: {rmse}")
+
+# Visualising train set
+plt.scatter(x=X1_train, y=y1_train, c='green')
+plt.plot(X1_train, lin_reg.predict(X1_train))
+plt.xlabel('degree_p')
+plt.ylabel('mba_p')
+plt.title('Train set')
+plt.show()
+
+# Visualising test set
+plt.scatter(x=X1_test, y=y1_test, c='red')
+plt.plot(X1_test, lin_reg.predict(X1_test))
+plt.xlabel('degree_p')
+plt.ylabel('mba_p')
+plt.title('Test set')
+plt.show()
+
+print(f"Coefficient: {lin_reg.coef_[0][0]}")
+# pretty low coefficient, low linear dependency
+
+""" Multiple Lin Reg with 'mba_p'as response var, 'ssc_p' and 'hsc_p' as predictor var """
+
+# get data
+data_task = dataset[['ssc_p', 'hsc_p', 'mba_p']]
+X2 = np.array(data_task.iloc[:,:2])
+y2 = np.array(data_task.iloc[:, 2])
+
+# train test split
+X2_train, X2_test, y2_train, y2_test = train_test_split(X2, y2, test_size=0.25)
+lin_reg = LinearRegression(n_jobs=-1)
+
+# fit features and labels
+lin_reg.fit(X2_train, y2_train)
+y2_pred = lin_reg.predict(X2_test)
+
+lin_reg.coef_
+lin_reg.intercept_
+# linear regression equation
+# mba_p = 45.3 + 0.168*ssc_p + 0.08*hsc_p
+
+# backward elimination to check significance
+X2 = np.append(arr = np.ones(shape=(215, 1)).astype(float), values=X2, axis=1)
+X_opt = X2[:, [0, 1, 2]]
+regressor_OLS = sm.OLS(endog=y2, exog=X_opt).fit()
+regressor_OLS.summary()
+print('SSC_P pvalue: ', regressor_OLS._results.pvalues[1])
+print('HSC_P pvalue: ', regressor_OLS._results.pvalues[2])
+
+""" Histogram of degree_p """
+
+# 1. 
+dataset['degree_p'].hist()
+
+# 2. Differentiate based on status
+dataset[dataset['status'] == 'Placed']['degree_p'].hist(color='green', bins=15, alpha=0.5)
+dataset[dataset['status'] == 'Not Placed']['degree_p'].hist(color='red', bins=15, alpha=0.5)
+plt.show()
+
+# 3. Add gender difference
+grid = sns.FacetGrid(dataset, col='status', row='gender')
+grid = grid.map(plt.hist, 'degree_p', color='r')
+
+# 4. Boxplot for degree_p
