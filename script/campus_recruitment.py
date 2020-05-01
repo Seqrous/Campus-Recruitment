@@ -159,31 +159,6 @@ no_workex_job_p = len(dataset[(dataset['workex'] == 'No') & (dataset['salary'] >
 # however, 86.5 % of people who had previous work experience got a job and 
 # nearly 60% of those who hadn't had previous work experience got a job as well
 
-""" PREDICTING """
-
-num_data = []
-cat_data = []
-
-for i, column in enumerate(dataset.dtypes):
-    if column == object:
-        cat_data.append(dataset.iloc[:, i])
-    else:
-        num_data.append(dataset.iloc[:, i])
-
-num_data = pd.DataFrame(num_data).transpose()
-cat_data = pd.DataFrame(cat_data).transpose()
-
-y = cat_data['status']
-cat_data = cat_data.drop(['status'], axis=1)
-# num_data is in a right shape and form, no need to transform it
-
-# one hot encoding
-cat_data_encoded = pd.get_dummies(cat_data)
-
-final_data = pd.concat([num_data, cat_data_encoded], axis = 1)
-
-X = final_data.drop(['salary', 'sl_no'], axis=1)
-
 """ TASKS FROM KAGGLE """
 
 """ Association between 'mba_p' (outcome) and 'degree_p' (input) """
@@ -204,6 +179,7 @@ print(f"MSE: {mse}")
 print(f"RMSE: {rmse}")
 
 # Visualising train set
+plt.figure()
 plt.scatter(x=X1_train, y=y1_train, c='green')
 plt.plot(X1_train, lin_reg.predict(X1_train))
 plt.xlabel('degree_p')
@@ -212,6 +188,7 @@ plt.title('Train set')
 plt.show()
 
 # Visualising test set
+plt.figure()
 plt.scatter(x=X1_test, y=y1_test, c='red')
 plt.plot(X1_test, lin_reg.predict(X1_test))
 plt.xlabel('degree_p')
@@ -242,7 +219,7 @@ lin_reg.intercept_
 # linear regression equation
 # mba_p = 45.3 + 0.168*ssc_p + 0.08*hsc_p
 
-# backward elimination to check significance
+# check significance of the features
 X2 = np.append(arr = np.ones(shape=(215, 1)).astype(float), values=X2, axis=1)
 X_opt = X2[:, [0, 1, 2]]
 regressor_OLS = sm.OLS(endog=y2, exog=X_opt).fit()
@@ -250,18 +227,74 @@ regressor_OLS.summary()
 print('SSC_P pvalue: ', regressor_OLS._results.pvalues[1])
 print('HSC_P pvalue: ', regressor_OLS._results.pvalues[2])
 
-""" Histogram of degree_p """
+""" PLotting """
 
-# 1. 
+# 1. Histogram of degree_p
+plt.figure()
+plt.xlabel('degree_p', fontsize=15)
+plt.ylabel('Distribution among people', fontsize=15)
+plt.title('degree_p histogram', fontsize=15)
 dataset['degree_p'].hist()
 
 # 2. Differentiate based on status
-dataset[dataset['status'] == 'Placed']['degree_p'].hist(color='green', bins=15, alpha=0.5)
-dataset[dataset['status'] == 'Not Placed']['degree_p'].hist(color='red', bins=15, alpha=0.5)
+plt.figure()
+dataset[dataset['status'] == 'Placed']['degree_p'].hist(color='green', bins=15, alpha=0.5, label='Placed')
+dataset[dataset['status'] == 'Not Placed']['degree_p'].hist(color='red', bins=15, alpha=0.5, label='Not Placed')
+plt.title('Degree_p influence of job placement', fontsize=15)
+plt.xlabel('Degree_p')
+plt.ylabel('Amount of students')
+plt.legend()
 plt.show()
 
-# 3. Add gender difference
+# 3. Separate gender
 grid = sns.FacetGrid(dataset, col='status', row='gender')
 grid = grid.map(plt.hist, 'degree_p', color='r')
 
-# 4. Boxplot for degree_p
+# 4. Boxplot for degree_p differentiating status and gender
+boxplot_data = dataset[['gender', 'status', 'degree_p']]
+plt.figure()
+sns.boxplot(x='gender', y='degree_p', hue='status', 
+            hue_order=['Placed', 'Not Placed'], data=boxplot_data, fliersize=0)
+plt.xlabel('Gender', fontsize=15)
+plt.ylabel('Degree_p', fontsize=15)
+plt.title('Job placement distribution among men and women', fontsize=15)
+plt.show()
+
+# 5.Introduce workex and gender
+grid = sns.FacetGrid(dataset, col='gender', row='workex')
+grid = grid.map(plt.hist, 'degree_p', color='r')
+
+# 6. Draw a density plot for degree_p
+plt.figure()
+sns.distplot(a=dataset['degree_p'], bins=10)
+plt.xlabel('degree_p', fontsize=15)
+plt.ylabel('Density', fontsize=15)
+plt.title('Kernel density of degree_p', fontsize=15)
+plt.show()
+
+# 7. Beautify the plot 
+plt.figure(figsize=(12, 8))
+sns.distplot(a=dataset[dataset['status'] == 'Placed']['degree_p'], bins=12,
+             kde_kws={'color': 'g', 'label': 'Placed KDE'},
+             hist_kws={'color': 'g', 'alpha': 0.6})
+sns.distplot(a=dataset[dataset['status'] == 'Not Placed']['degree_p'], bins=12,
+             kde_kws={'color': 'r', 'label': 'Not Placed KDE'},
+             hist_kws={'color': 'r', 'alpha': 0.6})
+plt.xlabel('degree_p', fontsize=15)
+plt.ylabel('Density', fontsize=15)
+plt.title('Kernel density of degree_p', fontsize=15)
+plt.show()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
